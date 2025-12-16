@@ -1,55 +1,75 @@
 // This directive tells Next.js that this component runs on the client-side
-// It's needed because we're using browser-specific features like 3D graphics
+// It's needed because we're using browser-specific features like WebXR
 'use client';
 
-// Import required components
+// Import required components for XR functionality
 import { Canvas } from '@react-three/fiber';
+import { XR, createXRStore, VRButton, ARButton } from '@react-three/xr';
 import { OrbitControls, Grid } from '@react-three/drei';
-import { Cube } from './components/Cube';
-import { XRScene } from './components/XRScene';
-import { Model as PottedPlant } from './components/PottedPlant';
-import { Flower } from './components/Flower';
-import { FruitPlant } from './components/FruitPlant';
-import { Tree } from './components/Tree';
-import { SmallPlant } from './components/SmallPlant';
-import { useState } from 'react';
+import { Model as PottedPlant } from './PottedPlant';
+import { Cube } from './Cube';
+import { Flower } from './Flower';
+import { FruitPlant } from './FruitPlant';
+import { Tree } from './Tree';
+import { SmallPlant } from './SmallPlant';
 
-// Main homepage component that renders our 3D scene
-export default function Home() {
-  // State to toggle between regular 3D view and XR view
-  const [isXRMode, setIsXRMode] = useState(false);
+// Props interface for the XRScene component
+interface XRSceneProps {
+  onExitXR?: () => void; // Optional callback to exit XR mode
+}
 
-  // If XR mode is enabled, render the XR scene
-  if (isXRMode) {
-    return <XRScene onExitXR={() => setIsXRMode(false)} />;
-  }
+// Create XR store for managing XR state
+const xrStore = createXRStore();
 
+// XR Scene component that provides both VR and AR experiences
+export function XRScene({ onExitXR }: XRSceneProps = {}) {
   return (
-    // Container div that takes up the full viewport (100% width and height)
+    // Container div that takes up the full viewport
     <div style={{ width: '100vw', height: '100vh' }}>
       {/* 
-        Button to enter XR mode
-        Positioned at the top-left corner for easy access
+        VR and AR Buttons
+        These are the built-in buttons from @react-three/xr
+        They only appear if the device supports WebXR
       */}
-      <button
-        onClick={() => setIsXRMode(true)}
-        style={{
-          position: 'absolute',
-          top: '20px',
-          left: '20px',
-          zIndex: 1000,
-          padding: '10px 20px',
-          backgroundColor: '#4CAF50',
-          color: 'white',
-          border: 'none',
-          borderRadius: '5px',
-          cursor: 'pointer',
-          fontSize: '16px',
-          fontWeight: 'bold'
-        }}
-      >
-        Enter XR Mode
-      </button>
+      <div style={{ 
+        position: 'absolute', 
+        top: '20px', 
+        left: '20px', 
+        zIndex: 1000,
+        display: 'flex',
+        gap: '10px'
+      }}>
+        {/* VR Button - enters immersive VR mode */}
+        <VRButton store={xrStore} />
+        {/* AR Button - enters augmented reality mode */}
+        <ARButton store={xrStore} />
+      </div>
+
+      {/* 
+        Exit XR Button
+        Allows users to return to the regular 3D view
+      */}
+      {onExitXR && (
+        <button
+          onClick={onExitXR}
+          style={{
+            position: 'absolute',
+            top: '20px',
+            right: '20px',
+            zIndex: 1000,
+            padding: '10px 20px',
+            backgroundColor: '#f44336',
+            color: 'white',
+            border: 'none',
+            borderRadius: '5px',
+            cursor: 'pointer',
+            fontSize: '16px',
+            fontWeight: 'bold'
+          }}
+        >
+          Exit XR Mode
+        </button>
+      )}
 
       {/* 
         Canvas is the main React Three Fiber component that creates a 3D scene
@@ -57,6 +77,16 @@ export default function Home() {
         camera prop sets the initial camera position [x, y, z]
       */}
       <Canvas camera={{ position: [5, 5, 5] }}>
+        {/* 
+          XR Provider
+          This component provides XR context to all child components
+        */}
+        <XR store={xrStore}>
+          {/* 
+            XR CONTROLLERS AND HANDS
+            These components handle VR/AR input devices
+            Note: Controllers and Hands components are available but may require additional setup
+          */}
         
         {/* 
           LIGHTING SETUP
@@ -71,6 +101,22 @@ export default function Home() {
           position={[10, 10, 5]}  // Position in 3D space [x, y, z]
           intensity={1.0}         // How bright the light is
           castShadow              // Enable this light to cast shadows
+        />
+        
+        {/* Point light radiates in all directions from a single point */}
+        <pointLight 
+          position={[-10, -10, -5]}  // Positioned opposite to main light
+          intensity={0.5}            // Dimmer than main light
+          color="#ffffff"            // Pure white light
+        />
+        
+        {/* Spot light creates a cone of light, like a flashlight */}
+        <spotLight
+          position={[0, 10, 0]}  // Directly above the scene
+          angle={0.3}            // Width of the light cone
+          penumbra={1}           // Softness of light edges (0 = sharp, 1 = very soft)
+          intensity={0.3}        // Gentle fill light
+          castShadow             // Enable shadow casting
         />
         
         {/* 
@@ -254,12 +300,14 @@ export default function Home() {
           - Left click + drag: Rotate camera around the scene
           - Right click + drag: Pan the camera
           - Scroll wheel: Zoom in and out
+          Note: These controls are disabled in VR/AR mode
         */}
         <OrbitControls 
           enablePan={true}      // Allow panning (moving the camera)
           enableZoom={true}     // Allow zooming in/out
           enableRotate={true}   // Allow rotating around the scene
         />
+        </XR>
       </Canvas>
     </div>
   );
